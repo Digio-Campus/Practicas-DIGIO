@@ -4,15 +4,50 @@ services:
     ports:
       - "4000:3000"
     environment:
-      PGUSER: ${PGUSER}
-      PGPASSWORD: ${PGPASSWORD}
-      PGHOST: ${PGHOST}
-      PGPORT: ${PGPORT}
-      PGDATABASE: ${PGDATABASE}
+      DB_HOST: db
+      DB_USER: root
+      DB_PASSWORD: example
+      DB_NAME: blog
+      # Configuración de Mailhog
+      SMTP_HOST: mailhog
+      SMTP_PORT: 1025
+      SMTP_FROM: noreply@blog.local
+    networks:
+      - blog_network
     depends_on:
-      - db
+      db:
+        condition: service_healthy
+      mailhog:
+        condition: service_started
 
   db:
-    image: postgres
+    image: mysql:8
     environment:
-      POSTGRES_PASSWORD: ${PGPASSWORD}
+      MYSQL_ROOT_PASSWORD: example
+      MYSQL_DATABASE: blog
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "--password=example"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    ports:
+      - "3307:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - blog_network
+
+  mailhog:
+    image: mailhog/mailhog
+    ports:
+      - "8025:8025"  # Puerto para la interfaz web
+      - "1025:1025"  # Puerto SMTP
+    networks:
+      - blog_network
+
+networks:
+  blog_network:
+    driver: bridge
+
+volumes:
+  mysql_data:
