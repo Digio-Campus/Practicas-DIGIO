@@ -1,0 +1,148 @@
+openapi: 3.0.0
+info:
+  title: Blog API
+  description: API RESTful para gestionar posts de un blog
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:4000
+    description: Servidor de desarrollo
+
+paths:
+  /posts:
+    post:
+      summary: Crear un nuevo post
+      description: Crea un nuevo post en el blog
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                title:
+                  type: string
+                  description: Título del post
+                content:
+                  type: string
+                  description: Contenido del post
+                author:
+                  type: string
+                  description: Autor del post
+              required:
+                - title
+                - content
+                - author
+      responses:
+        '200':
+          description: Post creado exitosamente
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+    
+    get:
+      summary: Listar todos los posts
+      description: Obtiene una lista de todos los posts del blog
+      responses:
+        '200':
+          description: Lista de posts obtenida exitosamente
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Post'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+  /posts/{id}:
+    get:
+      summary: Obtener un post específico
+      description: Obtiene un post específico por su ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: ID del post a obtener
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Post encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Post'
+        '404':
+          description: Post no encontrado
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                error: "Post no encontrado"
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '500':
+          $ref: '#/components/responses/InternalError'
+
+components:
+  schemas:
+    Post:
+      type: object
+      properties:
+        id:
+          type: integer
+          description: ID único del post
+        title:
+          type: string
+          description: Título del post
+        content:
+          type: string
+          description: Contenido del post
+        author:
+          type: string
+          description: Autor del post
+        created_at:
+          type: string
+          format: date-time
+          description: Fecha de creación del post
+      required:
+        - id
+        - title
+        - content
+        - author
+
+    Error:
+      type: object
+      properties:
+        error:
+          type: string
+        details:
+          type: string
+
+  responses:
+    BadRequest:
+      description: Petición inválida
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Petición inválida"
+            details: "El campo title es requerido"
+
+    InternalError:
+      description: Error interno del servidor
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            error: "Error interno del servidor"
+            details: "No se pudo conectar a la base de datos"

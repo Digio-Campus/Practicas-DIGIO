@@ -26,80 +26,81 @@ const pool = mysql.createPool({
 const app = express();
 app.use(express.json());
 
-// Create JSON-RPC server
-const server = new jayson.Server({
-    // Create a new blog post
-    async createPost(args, callback) {
-        try {
-            const { title, content, author } = args[0];
-            if (!title || !content || !author) {
-                return callback({ code: 400, message: 'Title, content, and author are required' });
-            }
-
-            const [result] = await pool.execute(
-                'INSERT INTO posts (title, content, author) VALUES (?, ?, ?)',
-                [title, content, author]
-            );
-
-            // Send notification email
-            await transporter.sendMail({
-                from: process.env.SMTP_FROM || 'noreply@blog.local',
-                to: 'admin@blog.local',
-                subject: `New Post Created: ${title}`,
-                text: `A new post has been created:\n\nTitle: ${title}\nAuthor: ${author}\n\nContent:\n${content}`,
-                html: `
-                    <h1>New Post Created</h1>
-                    <p><strong>Title:</strong> ${title}</p>
-                    <p><strong>Author:</strong> ${author}</p>
-                    <h2>Content:</h2>
-                    <p>${content}</p>
-                `
+// Create a new blog post
+app.post('/posts', async (req, res) => {
+    try {
+        const { title, content, author } = req.body;
+        
+        if (!title || !content || !author) {
+            return res.status(400).json({
+                error: "Petición inválida",
+                details: "Los campos title, content y author son requeridos"
             });
-
-            callback(null, {
-                id: result.insertId,
-                title,
-                content,
-                author
-            });
-        } catch (error) {
-            callback({ code: 500, message: error.message });
         }
-    },
 
-    // List all blog posts
-    async listPosts(args, callback) {
-        try {
-            const [rows] = await pool.execute('SELECT * FROM posts');
-            callback(null, rows);
-        } catch (error) {
-            callback({ code: 500, message: error.message });
-        }
-    },
+        const [result] = await pool.execute(
+            'INSERT INTO posts (title, content, author) VALUES (?, ?, ?)',
+            [title, content, author]
+        );
 
-    // Get a specific post by ID
-    async getPost(args, callback) {
-        try {
-            const id = args[0];
-            if (!id) {
-                return callback({ code: 400, message: 'Post ID is required' });
-            }
+        // Send notification email
+        await transporter.sendMail({
+            from: process.env.SMTP_FROM || 'noreply@blog.local',
+            to: 'admin@blog.local',
+            subject: `New Post Created: ${title}`,
+            text: `A new post has been created:\n\nTitle: ${title}\nAuthor: ${author}\n\nContent:\n${content}`,
+            html: `
+                <h1>New Post Created</h1>
+                <p><strong>Title:</strong> ${title}</p>
+                <p><strong>Author:</strong> ${author}</p>
+                <h2>Content:</h2>
+                <p>${content}</p>
+            `
+        });
 
-            const [rows] = await pool.execute('SELECT * FROM posts WHERE id = ?', [id]);
-            
-            if (rows.length === 0) {
-                return callback({ code: 404, message: 'Post not found' });
-            }
-
-            callback(null, rows[0]);
-        } catch (error) {
-            callback({ code: 500, message: error.message });
-        }
+        const [newPost] = await pool.execute('SELECT * FROM posts WHERE id = ?', [result.insertId]);
+        res.json(newPost[0]);
+    } catch (error) {
+        res.status(500).json({
+            error: "Error interno del servidor",
+            details: error.message
+        });
     }
 });
 
-// Mount JSON-RPC server on /api endpoint
-app.use('/api', server.middleware());
+// List all blog posts
+app.get('/posts', async (req, res) => {
+    try {
+        const [rows] = await pool.execute('SELECT * FROM posts');
+        res.json(rows);
+    } catch (error) {
+        res.status(500).json({
+            error: "Error interno del servidor",
+            details: error.message
+        });
+    }
+});
+
+// Get a specific post by ID
+app.get('/posts/:id', async (req, res) => {
+    try {
+        const { id } = req.params;
+        const [rows] = await pool.execute('SELECT * FROM posts WHERE id = ?', [id]);
+        
+        if (rows.length === 0) {
+            return res.status(404).json({
+                error: "Post no encontrado"
+            });
+        }
+
+        res.json(rows[0]);
+    } catch (error) {
+        res.status(500).json({
+            error: "Error interno del servidor",
+            details: error.message
+        });
+    }
+});
 
 // Initialize database schema
 async function initializeDatabase(retries = 5) {

@@ -45,6 +45,17 @@ services:
     networks:
       - blog_network
 
+  swagger-ui:
+    image: swaggerapi/swagger-ui
+    ports:
+      - "8080:8080"
+    environment:
+      SWAGGER_JSON: /swagger/swagger.yaml
+    volumes:
+      - ./swagger.yaml:/swagger/swagger.yaml
+    networks:
+      - blog_network
+
 networks:
   blog_network:
     driver: bridge
