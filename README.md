@@ -9,6 +9,11 @@ This project implements a RESTful API service with OpenAPI/Swagger specification
 ├── Dockerfile           # Docker container configuration
 ├── index.js            # Main API server file
 ├── swagger.yaml        # OpenAPI/Swagger specification
+├── config/             # Configuration files
+│   └── logger.js      # Winston logger configuration
+├── logs/              # Application logs directory
+│   ├── all.log       # Complete application logs
+│   └── error.log     # Error-level logs only
 ├── client-js/         # Generated JavaScript client library
 │   ├── src/           # Client source code
 │   ├── docs/          # Client documentation
@@ -22,6 +27,17 @@ This project implements a RESTful API service with OpenAPI/Swagger specification
 - Node.js (Latest LTS version recommended)
 - Docker
 - Docker Compose
+
+## Features
+
+- RESTful API endpoints for blog post management
+- OpenAPI/Swagger specification and documentation
+- MySQL database for data persistence
+- Email notifications via SMTP (MailHog for development)
+- Comprehensive logging system with Winston
+  - Multiple log levels (error, warn, info, http, debug)
+  - Console and file-based logging
+  - Separate error log file
 
 ## Getting Started
 
@@ -85,6 +101,29 @@ To start development:
 2. Update the server implementation in `index.js`
 3. Test changes locally using Docker Compose
 4. Run tests to ensure everything works correctly
+
+### Logging
+
+The application uses Winston for logging with different levels:
+
+- `error`: Critical errors and exceptions
+- `warn`: Warning messages and non-critical issues
+- `info`: General information about application state
+- `http`: HTTP request logging
+- `debug`: Detailed debugging information
+
+Log files are stored in the `logs` directory:
+- `logs/all.log`: Contains all log levels
+- `logs/error.log`: Contains only error-level logs
+
+To view logs in real-time:
+```bash
+# View all logs
+docker compose logs -f app
+
+# View only the last 100 lines
+docker compose logs --tail 100 -f app
+```
 
 ## License
 
