@@ -2,6 +2,7 @@ const express = require('express');
 const mysql = require('mysql2/promise');
 const jayson = require('jayson');
 const nodemailer = require('nodemailer');
+const logger = require('./config/logger');
 
 // Email transport configuration
 const transporter = nodemailer.createTransport({
@@ -30,8 +31,10 @@ app.use(express.json());
 app.post('/posts', async (req, res) => {
     try {
         const { title, content, author } = req.body;
+        logger.http(`POST /posts - Creating new post: "${title}" by ${author}`);
         
         if (!title || !content || !author) {
+            logger.warn('POST /posts - Missing required fields');
             return res.status(400).json({
                 error: "Petición inválida",
                 details: "Los campos title, content y author son requeridos"
@@ -59,8 +62,10 @@ app.post('/posts', async (req, res) => {
         });
 
         const [newPost] = await pool.execute('SELECT * FROM posts WHERE id = ?', [result.insertId]);
+        logger.info(`POST /posts - Post created successfully with ID ${result.insertId}`);
         res.json(newPost[0]);
     } catch (error) {
+        logger.error(`POST /posts - Error creating post: ${error.message}`);
         res.status(500).json({
             error: "Error interno del servidor",
             details: error.message
@@ -71,9 +76,12 @@ app.post('/posts', async (req, res) => {
 // List all blog posts
 app.get('/posts', async (req, res) => {
     try {
+        logger.http('GET /posts - Retrieving all posts');
         const [rows] = await pool.execute('SELECT * FROM posts');
+        logger.debug(`GET /posts - Retrieved ${rows.length} posts`);
         res.json(rows);
     } catch (error) {
+        logger.error(`GET /posts - Error retrieving posts: ${error.message}`);
         res.status(500).json({
             error: "Error interno del servidor",
             details: error.message
@@ -85,13 +93,18 @@ app.get('/posts', async (req, res) => {
 app.get('/posts/:id', async (req, res) => {
     try {
         const { id } = req.params;
+        logger.http(`GET /posts/${id} - Retrieving post`);
+        
         const [rows] = await pool.execute('SELECT * FROM posts WHERE id = ?', [id]);
         
         if (rows.length === 0) {
+            logger.warn(`GET /posts/${id} - Post not found`);
             return res.status(404).json({
                 error: "Post no encontrado"
             });
         }
+        
+        logger.debug(`GET /posts/${id} - Post retrieved successfully`);
 
         res.json(rows[0]);
     } catch (error) {
@@ -114,15 +127,15 @@ async function initializeDatabase(retries = 5) {
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
             )
         `);
-        console.log('Database initialized successfully');
+        logger.info('Database initialized successfully');
     } catch (error) {
-        console.error(`Error initializing database (attempts left: ${retries}):`, error.message);
+        logger.error(`Error initializing database (attempts left: ${retries}): ${error.message}`);
         if (retries > 0) {
-            console.log('Retrying in 5 seconds...');
+            logger.info('Retrying in 5 seconds...');
             await new Promise(resolve => setTimeout(resolve, 5000));
             return initializeDatabase(retries - 1);
         }
-        console.error('Max retries reached. Exiting...');
+        logger.error('Max retries reached. Exiting...');
         process.exit(1);
     }
 }
@@ -130,6 +143,6 @@ async function initializeDatabase(retries = 5) {
 // Start server
 initializeDatabase().then(() => {
     app.listen(3000, () => {
-        console.log('JSON-RPC server running on port 3000');
+        logger.info('JSON-RPC server running on port 3000');
     });
 });
